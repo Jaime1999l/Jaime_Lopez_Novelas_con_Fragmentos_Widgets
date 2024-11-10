@@ -91,7 +91,7 @@ public class NovelListFragment extends Fragment implements NovelAdapter.OnNovelC
     public void onFavoriteClick(Novel novel) {
         // Manejar la acción de favorito
         novel.setFavorite(!novel.isFavorite());
-        novelViewModel.updateFavoriteStatus(novel); // Asegúrate de tener este método en el ViewModel para actualizar el favorito
+        novelViewModel.updateFavoriteStatus(novel);
     }
 
     @Override

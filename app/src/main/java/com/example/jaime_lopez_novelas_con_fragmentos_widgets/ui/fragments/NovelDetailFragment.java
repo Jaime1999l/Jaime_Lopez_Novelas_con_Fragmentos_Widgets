@@ -99,7 +99,6 @@ public class NovelDetailFragment extends Fragment {
                     }
                 })
                 .addOnFailureListener(e -> {
-                    // Manejo de errores en caso de fallo
                 });
     }
 

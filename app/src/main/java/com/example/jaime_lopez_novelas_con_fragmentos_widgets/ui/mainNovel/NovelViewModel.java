@@ -71,17 +71,14 @@ public class NovelViewModel extends AndroidViewModel {
     public void updateFavoriteStatus(Novel novel) {
         db.collection("novelas").document(novel.getId()).update("favorite", novel.isFavorite())
                 .addOnSuccessListener(aVoid -> {
-                    // Aquí podrías manejar el éxito de la actualización, si es necesario
                 })
                 .addOnFailureListener(e -> {
-                    // Manejar error de actualización aquí
                 });
     }
 
     @Override
     protected void onCleared() {
         super.onCleared();
-        // Eliminar la escucha en tiempo real al destruir el ViewModel
         if (registration != null) {
             registration.remove();
         }

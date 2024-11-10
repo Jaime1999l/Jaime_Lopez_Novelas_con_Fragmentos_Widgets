@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <!-- Imagen de la portada de la novela -->
+    <ImageView
+        android:id="@+id/image_view_cover"
+        android:layout_width="80dp"
+        android:layout_height="120dp"
+        android:scaleType="centerCrop"
+        android:layout_marginEnd="8dp"
+        android:contentDescription="Portada de la novela"/>
+
+    <!-- Texto de la novela: título y autor -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- Título de la novela -->
+        <TextView
+            android:id="@+id/text_view_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:text="Título de la novela"/>
+
+        <!-- Autor de la novela -->
+        <TextView
+            android:id="@+id/text_view_author"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Autor de la novela"/>
+
+    </LinearLayout>
+
+    <!-- Botón de favorito (corazón) -->
+    <ImageView
+        android:id="@+id/image_favorite"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:padding="8dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_favorite"
+        android:contentDescription="Botón de favorito"/>
+</LinearLayout>

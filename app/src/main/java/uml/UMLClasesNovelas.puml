@@ -1,0 +1,145 @@
+@startuml
+package com.example.pde_aplicacion_gestion_novelas_segundo_plano_jaime_lopez_diaz {
+    class PantallaPrincipalActivity {
+        - DrawerLayout drawerLayout
+        - FirebaseFirestore db
+        - LinearLayout novelsLayout
+        - List<Novel> novelList
+        - ExecutorService executorService
+        + onCreate(Bundle): void
+        - openDrawer(): void
+        - setupNavigation(): void
+        - loadNovels(): void
+        - updateNovelList(List<Novel>): void
+        - startPolling(): void
+        + onDestroy(): void
+    }
+
+    class ReviewActivity {
+        - ReviewViewModel reviewViewModel
+        - LinearLayout reviewsLayout
+        + onCreate(Bundle): void
+        - loadAllReviews(): void
+        - displayReviews(List<Review>): void
+        - loadNovelDetails(String): void
+        - showNovelDetails(Novel): void
+    }
+
+    class AddReviewActivity {
+        - EditText editTextReviewer
+        - EditText editTextComment
+        - EditText editTextRating
+        - Button buttonAddReview
+        - ReviewViewModel reviewViewModel
+        - String novelId
+        - String novelName
+        + onCreate(Bundle): void
+        - addReview(): void
+    }
+
+    class FavoritesActivity {
+        - FavoritesViewModel favoritesViewModel
+        - LinearLayout favoritesLayout
+        + onCreate(Bundle): void
+        - displayFavoriteNovels(List<Novel>): void
+    }
+
+    class AddEditNovelActivity {
+        - EditText editTextTitle
+        - EditText editTextAuthor
+        - EditText editTextYear
+        - EditText editTextSynopsis
+        - ImageView imageViewCover
+        - Uri selectedImageUri
+        - FirebaseFirestore db
+        - String novelId
+        + onCreate(Bundle): void
+        - openGallery(): void
+        - saveNovel(): void
+        - loadNovelDetails(int): void
+    }
+
+    class ReviewViewModel {
+        - FirebaseFirestore db
+        - MutableLiveData<List<Review>> reviewsLiveData
+        + getAllReviews(): LiveData<List<Review>>
+        + getNovelById(String): LiveData<Novel>
+        + addReview(Review): void
+    }
+
+    class NovelViewModel {
+        - MutableLiveData<List<Novel>> novelListLiveData
+        - FirebaseFirestore db
+        + getAllNovels(): LiveData<List<Novel>>
+        + getFavoriteNovels(): LiveData<List<Novel>>
+        - loadNovels(): void
+    }
+
+    class FavoritesViewModel {
+        - FirebaseFirestore db
+        - MutableLiveData<List<Novel>> favoriteNovelsLiveData
+        + getFavoriteNovels(): LiveData<List<Novel>>
+        - loadFavoriteNovels(): void
+    }
+
+    class Novel {
+        - String id
+        - String title
+        - String author
+        - int year
+        - String synopsis
+        - String imageUri
+        - boolean favorite
+        + getId(): String
+        + setId(String): void
+        + getTitle(): String
+        + getAuthor(): String
+        + getYear(): int
+        + getSynopsis(): String
+        + getImageUri(): String
+        + isFavorite(): boolean
+        + setFavorite(boolean): void
+    }
+
+    class Review {
+        - String id
+        - String novelId
+        - String reviewer
+        - String comment
+        - int rating
+        - String novelName
+        + getId(): String
+        + setId(String): void
+        + getNovelId(): String
+        + setNovelId(String): void
+        + getReviewer(): String
+        + setReviewer(String): void
+        + getComment(): String
+        + setComment(String): void
+        + getRating(): int
+        + setRating(int): void
+        + getNovelName(): String
+        + setNovelName(String): void
+    }
+
+    class SettingsActivity {
+        - Switch switchDarkMode
+        + onCreate(Bundle): void
+        - loadThemePreference(): void
+        - setAppTheme(boolean): void
+    }
+
+    PantallaPrincipalActivity --> AddEditNovelActivity
+    PantallaPrincipalActivity --> FavoritesActivity
+    PantallaPrincipalActivity --> ReviewActivity
+    PantallaPrincipalActivity --> SettingsActivity
+    ReviewActivity --> ReviewViewModel
+    AddReviewActivity --> ReviewViewModel
+    FavoritesActivity --> FavoritesViewModel
+    AddEditNovelActivity --> Novel
+    ReviewViewModel --> Review
+    ReviewViewModel --> Novel
+    NovelViewModel --> Novel
+    FavoritesViewModel --> Novel
+}
+@enduml

@@ -20,7 +20,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.UUID;
 
-public class AddEditNovelActivity extends AppCompatActivity {
+public class AddNovelActivity extends AppCompatActivity {
 
     private EditText editTextTitle, editTextAuthor, editTextYear, editTextSynopsis;
     private ImageView imageViewCover;
@@ -56,7 +56,7 @@ public class AddEditNovelActivity extends AppCompatActivity {
         Button buttonSelectImage = findViewById(R.id.button_select_image);
 
         if (getIntent().hasExtra("EXTRA_ID")) {
-            novelId = String.valueOf(getIntent().getIntExtra("EXTRA_ID", -1));
+            novelId = getIntent().getStringExtra("EXTRA_ID");
             loadNovelDetails(novelId);
         }
 
@@ -90,24 +90,26 @@ public class AddEditNovelActivity extends AppCompatActivity {
             novel.setId(novelId);
             db.collection("novelas").document(novelId).set(novel)
                     .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(AddEditNovelActivity.this, "Novela actualizada", Toast.LENGTH_SHORT).show();
-                        sqliteHelper.updateNovel(novel);  // Actualizamos en SQLite
+                        Toast.makeText(AddNovelActivity.this, "Novela actualizada", Toast.LENGTH_SHORT).show();
+                        sqliteHelper.updateNovel(novel);
+                        setResult(RESULT_OK);  // Indica que la novela fue actualizada
                         finish();
                     })
                     .addOnFailureListener(e -> {
-                        Toast.makeText(AddEditNovelActivity.this, "Error al actualizar la novela", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(AddNovelActivity.this, "Error al actualizar la novela", Toast.LENGTH_SHORT).show();
                     });
         } else {
             String randomId = UUID.randomUUID().toString();
             novel.setId(randomId);
             db.collection("novelas").document(randomId).set(novel)
                     .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(AddEditNovelActivity.this, "Novela agregada", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(AddNovelActivity.this, "Novela agregada", Toast.LENGTH_SHORT).show();
                         sqliteHelper.addNovel(novel);
+                        setResult(RESULT_OK);  // Indica que la novela fue añadida
                         finish();
                     })
                     .addOnFailureListener(e -> {
-                        Toast.makeText(AddEditNovelActivity.this, "Error al agregar la novela", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(AddNovelActivity.this, "Error al agregar la novela", Toast.LENGTH_SHORT).show();
                     });
         }
     }

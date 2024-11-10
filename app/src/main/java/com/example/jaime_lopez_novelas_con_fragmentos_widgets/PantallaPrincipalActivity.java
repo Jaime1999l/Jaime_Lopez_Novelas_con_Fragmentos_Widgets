@@ -1,105 +1,107 @@
+// PantallaPrincipalActivity.java
 package com.example.jaime_lopez_novelas_con_fragmentos_widgets;
 
-import android.annotation.SuppressLint;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Typeface;
 import android.os.Bundle;
-import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.cardview.widget.CardView;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.FragmentTransaction;
 
-import com.example.jaime_lopez_novelas_con_fragmentos_widgets.activity.AddEditNovelActivity;
-import com.example.jaime_lopez_novelas_con_fragmentos_widgets.activity.AddReviewActivity;
+import com.example.jaime_lopez_novelas_con_fragmentos_widgets.activity.AddNovelActivity;
 import com.example.jaime_lopez_novelas_con_fragmentos_widgets.activity.FavoritesActivity;
 import com.example.jaime_lopez_novelas_con_fragmentos_widgets.activity.ReviewActivity;
 import com.example.jaime_lopez_novelas_con_fragmentos_widgets.activity.SettingsActivity;
-import com.example.jaime_lopez_novelas_con_fragmentos_widgets.domain.Novel;
 import com.example.jaime_lopez_novelas_con_fragmentos_widgets.databaseSQL.SQLiteHelper;
+import com.example.jaime_lopez_novelas_con_fragmentos_widgets.domain.Novel;
+import com.example.jaime_lopez_novelas_con_fragmentos_widgets.ui.fragments.NovelDetailFragment;
+import com.example.jaime_lopez_novelas_con_fragmentos_widgets.ui.fragments.NovelListFragment;
+import com.example.jaime_lopez_novelas_con_fragmentos_widgets.widget.NovelWidgetProvider;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class PantallaPrincipalActivity extends AppCompatActivity {
+public class PantallaPrincipalActivity extends AppCompatActivity implements NovelListFragment.OnNovelSelectedListener {
 
     private DrawerLayout drawerLayout;
     private FirebaseFirestore db;
     private LinearLayout novelsLayout;
+    private LinearLayout favoritesLayout;
     private List<Novel> novelList;
     private ExecutorService executorService;
     private SQLiteHelper sqliteHelper;
 
+    private static final int ADD_NOVEL_REQUEST_CODE = 1; // Un código de solicitud único para identificar la actividad de agregar novela
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Cargar la preferencia del tema (claro u oscuro) antes de establecer el contenido de la vista
         loadThemePreference();
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Inicialización de Firestore y elementos de la interfaz
         db = FirebaseFirestore.getInstance();
         drawerLayout = findViewById(R.id.drawer_layout);
         novelsLayout = findViewById(R.id.novels_layout);
+        favoritesLayout = findViewById(R.id.favorites_layout);
         novelList = new ArrayList<>();
-        sqliteHelper = new SQLiteHelper(this);  // Inicializamos SQLiteHelper
+        sqliteHelper = new SQLiteHelper(this);
+        executorService = Executors.newSingleThreadExecutor();
 
         // Configuración de la imagen de la pantalla principal
         ImageView imageView = findViewById(R.id.home_image);
         imageView.setImageResource(R.drawable.libros);
 
-        // Configuración del botón para abrir el menú lateral
+        // Botón para abrir el menú lateral
         Button openMenuButton = findViewById(R.id.open_menu_button);
-        openMenuButton.setOnClickListener(v -> openDrawer());
+        openMenuButton.setOnClickListener(v -> drawerLayout.openDrawer(findViewById(R.id.menu_layout)));
 
-        // Configuración de la navegación
         setupNavigation();
+        loadNovelsFromFirebase();
+        loadFavoriteNovelsFromFirebase(); // Cargar favoritos también
+    }
 
-        // Ejecutar la carga de novelas desde SQLite
-        executorService = Executors.newSingleThreadExecutor();
-        loadNovelsFromSQLite();
+    public void refreshFavoritesList() {
+        // Cargar y mostrar favoritos actualizados
+        loadFavoriteNovelsFromFirebase();
+        updateWidget();
+    }
 
-        // Iniciar la tarea en segundo plano para la actualización periódica
-        executorService.execute(this::startPolling);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadNovelsFromFirebase(); // Asegura que se carguen todas las novelas
+        loadFavoriteNovelsFromFirebase(); // Asegura que los favoritos también se recarguen
+        updateWidget(); // Actualiza el widget cada vez que se regresa a la actividad
     }
 
     private void loadThemePreference() {
         SharedPreferences sharedPreferences = getSharedPreferences("UserPreferences", MODE_PRIVATE);
         boolean isDarkMode = sharedPreferences.getBoolean("dark_mode", false);
-
-        // Aplicar el tema
-        if (isDarkMode) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-        } else {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-        }
-    }
-
-    private void openDrawer() {
-        if (drawerLayout != null) {
-            drawerLayout.openDrawer(findViewById(R.id.menu_layout));
-        } else {
-            Log.e("DrawerLayout", "drawerLayout is null");
-        }
+        AppCompatDelegate.setDefaultNightMode(isDarkMode ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
     }
 
     private void setupNavigation() {
         TextView navAddNovel = findViewById(R.id.nav_add_novel);
         navAddNovel.setOnClickListener(v -> {
-            Intent intent = new Intent(PantallaPrincipalActivity.this, AddEditNovelActivity.class);
-            startActivity(intent);
+            Intent intent = new Intent(PantallaPrincipalActivity.this, AddNovelActivity.class);
+            startActivityForResult(intent, ADD_NOVEL_REQUEST_CODE); // Cambiado para recibir el resultado
             drawerLayout.closeDrawers();
         });
 
@@ -116,6 +118,7 @@ public class PantallaPrincipalActivity extends AppCompatActivity {
             startActivity(intent);
             drawerLayout.closeDrawers();
         });
+
         TextView navSettings = findViewById(R.id.nav_settings);
         navSettings.setOnClickListener(v -> {
             Intent intent = new Intent(PantallaPrincipalActivity.this, SettingsActivity.class);
@@ -124,129 +127,131 @@ public class PantallaPrincipalActivity extends AppCompatActivity {
         });
     }
 
-    private void loadNovelsFromSQLite() {
-        // Cargar novelas desde SQLite y mostrarlas
-        List<Novel> novelsFromSQLite = sqliteHelper.getAllNovels();
-        if (novelsFromSQLite != null && !novelsFromSQLite.isEmpty()) {
-            updateNovelList(novelsFromSQLite);
-        }
-    }
-
-    private void loadNovels() {
+    private void loadNovelsFromFirebase() {
         db.collection("novelas").get().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
-                List<Novel> newNovels = new ArrayList<>();
+                novelList.clear();
                 for (QueryDocumentSnapshot document : task.getResult()) {
                     Novel novel = document.toObject(Novel.class);
-                    novel.setId(document.getId());  // Obtener el ID del documento
-                    newNovels.add(novel);
-
-                    // Guardamos la novela también en SQLite
+                    novel.setId(document.getId());
+                    novelList.add(novel);
                     sqliteHelper.addNovel(novel);
                 }
-
-                updateNovelList(newNovels);
-            } else {
-                Log.d("Firebase", "Error al obtener novelas: ", task.getException());
+                displayNovels(novelList);
             }
         });
     }
 
-    private void updateNovelList(List<Novel> newNovels) {
-        // Limpiamos el layout antes de mostrar las novelas
+    private void updateWidget() {
+        Intent intent = new Intent(this, NovelWidgetProvider.class);
+        intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+
+        // Obtener IDs de los widgets activos
+        int[] ids = AppWidgetManager.getInstance(getApplication())
+                .getAppWidgetIds(new ComponentName(getApplication(), NovelWidgetProvider.class));
+
+        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+        sendBroadcast(intent);
+    }
+
+    private void loadFavoriteNovelsFromFirebase() {
+        db.collection("novelas")
+                .whereEqualTo("favorite", true)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        List<Novel> favoriteNovels = new ArrayList<>();
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            Novel novel = document.toObject(Novel.class);
+                            novel.setId(document.getId());
+                            favoriteNovels.add(novel);
+                        }
+                        displayFavorites(favoriteNovels);
+                    }
+                });
+    }
+
+    private void displayNovels(List<Novel> novels) {
         novelsLayout.removeAllViews();
-
-        // Usamos un Set para evitar duplicados
-        Set<String> existingNovelIds = new HashSet<>();
-
-        // Agregamos las nuevas novelas al layout
-        for (Novel novel : newNovels) {
-            if (!existingNovelIds.contains(novel.getId())) {
-                existingNovelIds.add(novel.getId());
-                displayNovel(novel);
-            }
+        for (Novel novel : novels) {
+            displayNovel(novel, novelsLayout);
         }
     }
 
-    private void updateFavoriteStatus(Novel novel) {
-        db.collection("novelas").document(novel.getId()).update("favorite", novel.isFavorite())
-                .addOnSuccessListener(aVoid -> {
-                    Log.d("Firebase", "Estado de favorito actualizado: " + novel.isFavorite());
-                })
-                .addOnFailureListener(e -> {
-                    Log.e("Firebase", "Error al actualizar el estado de favorito", e);
-                });
-
-        // Actualizamos el estado de favorito también en SQLite
-        sqliteHelper.updateFavoriteStatus(novel.getId(), novel.isFavorite());
+    private void displayFavorites(List<Novel> favoriteNovels) {
+        favoritesLayout.removeAllViews();
+        for (Novel novel : favoriteNovels) {
+            displayNovel(novel, favoritesLayout);
+        }
     }
 
-    @SuppressLint("SetTextI18n")
-    private void displayNovel(Novel novel) {
-        // Crear el CardView para cada novela
+    private void displayNovel(Novel novel, LinearLayout layout) {
+        // Crear el CardView para la novela
         CardView cardView = new CardView(this);
-        cardView.setLayoutParams(new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        cardParams.setMargins(0, 8, 0, 8); // Margen para cada tarjeta
+        cardView.setLayoutParams(cardParams);
         cardView.setPadding(16, 16, 16, 16);
         cardView.setCardElevation(4);
+        cardView.setBackgroundColor(getResources().getColor(R.color.card_background_color)); // Fondo del CardView
 
-        // Color de fondo adaptable para el CardView (usando el tema por defecto)
-        cardView.setCardBackgroundColor(getResources().getColor(R.color.cardBackground));
-
-        // Texto para mostrar la información de la novela
-        TextView novelView = new TextView(this);
-        novelView.setText(novel.getTitle() + "\n" + novel.getAuthor());
-        novelView.setPadding(16, 16, 16, 16);
-        novelView.setTextSize(18);
-        novelView.setTextColor(getResources().getColor(R.color.textColor));
-
-        // Botón para agregar/quitar de favoritos
-        Button favoriteButton = new Button(this);
-        favoriteButton.setText(novel.isFavorite() ? "Eliminar de Favoritos" : "Añadir a Favoritos");
-        // Usar el estilo predeterminado de botón para evitar sobresalir visualmente
-        favoriteButton.setBackgroundResource(android.R.drawable.btn_default);
-        favoriteButton.setOnClickListener(v -> {
-            novel.setFavorite(!novel.isFavorite());
-            updateFavoriteStatus(novel);
-            favoriteButton.setText(novel.isFavorite() ? "Eliminar de Favoritos" : "Añadir a Favoritos");
-        });
-
-        // Botón para generar una reseña
-        Button reviewButton = new Button(this);
-        reviewButton.setText("Generar Reseña");
-        // Usar el estilo predeterminado de botón para evitar sobresalir visualmente
-        reviewButton.setBackgroundResource(android.R.drawable.btn_default);
-        reviewButton.setOnClickListener(v -> {
-            Intent intent = new Intent(PantallaPrincipalActivity.this, AddReviewActivity.class);
-            intent.putExtra("EXTRA_NOVEL_ID", novel.getId());
-            intent.putExtra("EXTRA_NOVEL_NAME", novel.getTitle());
-            startActivity(intent);
-        });
-
-        // Crear el layout para los elementos del CardView
         LinearLayout cardLayout = new LinearLayout(this);
         cardLayout.setOrientation(LinearLayout.VERTICAL);
-        cardLayout.addView(novelView);
-        cardLayout.addView(favoriteButton);
-        cardLayout.addView(reviewButton);
+
+        // Título de la novela
+        TextView novelTitle = new TextView(this);
+        novelTitle.setText(novel.getTitle());
+        novelTitle.setTextSize(18);
+        novelTitle.setTextColor(getResources().getColor(R.color.primary_text_color));
+        novelTitle.setTypeface(novelTitle.getTypeface(), Typeface.BOLD); // Negrita para el título
+        novelTitle.setOnClickListener(v -> onNovelSelected(novel));
+
+        // Autor de la novela
+        TextView novelAuthor = new TextView(this);
+        novelAuthor.setText("Autor: " + novel.getAuthor());
+        novelAuthor.setTextSize(14);
+        novelAuthor.setTextColor(getResources().getColor(R.color.secondary_text_color));
+
+        // Agregar los elementos al layout interno del CardView
+        cardLayout.addView(novelTitle);
+        cardLayout.addView(novelAuthor);
         cardView.addView(cardLayout);
 
-        // Añadir el CardView al layout principal
-        novelsLayout.addView(cardView);
+        // Añadir el CardView al layout de novelas
+        layout.addView(cardView);
+
+        // Crear un separador
+        View separator = new View(this);
+        LinearLayout.LayoutParams separatorParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                2); // Altura de 2 píxeles para que sea consistente
+        separatorParams.setMargins(0, 0, 0, 8); // Espacio debajo del separador
+        separator.setLayoutParams(separatorParams);
+        separator.setBackgroundColor(getResources().getColor(R.color.divider_color)); // Color sólido para el separador
+        layout.addView(separator);
     }
 
-
-    private void startPolling() {
-        while (true) {
-            try {
-                Thread.sleep(5000); // Espera de 5 sec
-                runOnUiThread(this::loadNovels); // Cargamos las novelas en el hilo principal
-            } catch (InterruptedException e) {
-                Log.e("Polling", "Error al dormir el hilo", e);
-                Thread.currentThread().interrupt();
-            }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == ADD_NOVEL_REQUEST_CODE && resultCode == RESULT_OK) {
+            loadNovelsFromFirebase(); // Recargar novelas desde Firebase
+            updateWidget(); // Actualizar el widget después de agregar una novela
         }
+    }
+
+    public void onNovelSelected(Novel novel) {
+        NovelDetailFragment detailFragment = new NovelDetailFragment();
+        Bundle args = new Bundle();
+        args.putString("novelId", novel.getId());
+        detailFragment.setArguments(args);
+
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        transaction.replace(R.id.fragment_container, detailFragment);
+        transaction.addToBackStack(null);
+        transaction.commit();
     }
 
     @Override

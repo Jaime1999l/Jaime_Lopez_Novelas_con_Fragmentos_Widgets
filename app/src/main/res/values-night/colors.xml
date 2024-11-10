@@ -10,4 +10,9 @@
     <color name="buttonBackground">#3700B3</color>
     <color name="buttonTextColor">#FFFFFF</color>
 
+    <!-- Colores para el fondo de las tarjetas y el texto en modo oscuro -->
+    <color name="card_background_color">#424242</color> <!-- Fondo oscuro para tarjetas -->
+    <color name="primary_text_color">#FFFFFF</color> <!-- Texto principal en blanco -->
+    <color name="secondary_text_color">#B0BEC5</color> <!-- Texto secundario en gris claro -->
+    <color name="divider_color">#616161</color>
 </resources>

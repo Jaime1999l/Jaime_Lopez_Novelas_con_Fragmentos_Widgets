@@ -1,24 +1,21 @@
+// FavoritesActivity.java
 package com.example.jaime_lopez_novelas_con_fragmentos_widgets.activity;
 
 import android.os.Bundle;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.ViewModelProvider;
-
 import com.example.jaime_lopez_novelas_con_fragmentos_widgets.R;
 import com.example.jaime_lopez_novelas_con_fragmentos_widgets.domain.Novel;
-import com.example.jaime_lopez_novelas_con_fragmentos_widgets.databaseSQL.SQLiteHelper;
-import com.example.jaime_lopez_novelas_con_fragmentos_widgets.ui.favoritesNovel.FavoritesViewModel;
-
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import java.util.ArrayList;
 import java.util.List;
 
 public class FavoritesActivity extends AppCompatActivity {
 
-    private FavoritesViewModel favoritesViewModel;
     private LinearLayout favoritesLayout;
-    private SQLiteHelper sqliteHelper;
+    private FirebaseFirestore firebaseFirestore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,28 +23,28 @@ public class FavoritesActivity extends AppCompatActivity {
         setContentView(R.layout.favorites_activity);
 
         favoritesLayout = findViewById(R.id.favorites_layout);
-        favoritesViewModel = new ViewModelProvider(this).get(FavoritesViewModel.class);
-        sqliteHelper = new SQLiteHelper(this);
+        firebaseFirestore = FirebaseFirestore.getInstance();
 
-        // Cargar novelas favoritas desde SQLite y Firebase
-        loadFavoriteNovelsFromSQLite();
         loadFavoriteNovelsFromFirebase();
     }
 
-    // Método para cargar novelas favoritas desde SQLite
-    private void loadFavoriteNovelsFromSQLite() {
-        List<Novel> favoriteNovelsFromSQLite = sqliteHelper.getFavoriteNovels();
-        displayFavoriteNovels(favoriteNovelsFromSQLite);
-    }
-
-    // Método para cargar novelas favoritas desde Firebase
     private void loadFavoriteNovelsFromFirebase() {
-        favoritesViewModel.getFavoriteNovels().observe(this, novels -> {
-            for (Novel novel : novels) {
-                sqliteHelper.addNovel(novel);
-            }
-            displayFavoriteNovels(novels);
-        });
+        firebaseFirestore.collection("novelas")
+                .whereEqualTo("favorite", true)
+                .addSnapshotListener((snapshots, e) -> {
+                    if (e != null) {
+                        // Manejo de errores
+                        return;
+                    }
+
+                    List<Novel> favoriteNovels = new ArrayList<>();
+                    for (QueryDocumentSnapshot document : snapshots) {
+                        Novel novel = document.toObject(Novel.class);
+                        novel.setId(document.getId());
+                        favoriteNovels.add(novel);
+                    }
+                    displayFavoriteNovels(favoriteNovels);
+                });
     }
 
     private void displayFavoriteNovels(List<Novel> novels) {

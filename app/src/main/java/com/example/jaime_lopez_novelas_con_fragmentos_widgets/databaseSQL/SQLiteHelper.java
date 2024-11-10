@@ -1,5 +1,6 @@
 package com.example.jaime_lopez_novelas_con_fragmentos_widgets.databaseSQL;
 
+import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -15,7 +16,7 @@ import java.util.List;
 public class SQLiteHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "novelasDB";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     public static final String TABLE_NOVELS = "novelas";
     public static final String COLUMN_ID = "id";
@@ -67,7 +68,6 @@ public class SQLiteHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    // Método para agregar una novela
     public void addNovel(Novel novel) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -108,6 +108,7 @@ public class SQLiteHelper extends SQLiteOpenHelper {
         return novelList;
     }
 
+    @SuppressLint("Range")
     public List<Novel> getFavoriteNovels() {
         List<Novel> favoriteNovels = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
@@ -116,13 +117,13 @@ public class SQLiteHelper extends SQLiteOpenHelper {
         if (cursor.moveToFirst()) {
             do {
                 Novel novel = new Novel();
-                novel.setId(cursor.getString(0));
-                novel.setTitle(cursor.getString(1));
-                novel.setAuthor(cursor.getString(2));
-                novel.setYear(cursor.getInt(3));
-                novel.setSynopsis(cursor.getString(4));
-                novel.setImageUri(cursor.getString(5));
-                novel.setFavorite(cursor.getInt(6) == 1);
+                novel.setId(cursor.getString(cursor.getColumnIndex(COLUMN_ID)));
+                novel.setTitle(cursor.getString(cursor.getColumnIndex(COLUMN_TITLE)));
+                novel.setAuthor(cursor.getString(cursor.getColumnIndex(COLUMN_AUTHOR)));
+                novel.setYear(cursor.getInt(cursor.getColumnIndex(COLUMN_YEAR)));
+                novel.setSynopsis(cursor.getString(cursor.getColumnIndex(COLUMN_SYNOPSIS)));
+                novel.setImageUri(cursor.getString(cursor.getColumnIndex(COLUMN_IMAGE_URI)));
+                novel.setFavorite(cursor.getInt(cursor.getColumnIndex(COLUMN_FAVORITE)) == 1);
                 favoriteNovels.add(novel);
             } while (cursor.moveToNext());
         }
@@ -131,6 +132,7 @@ public class SQLiteHelper extends SQLiteOpenHelper {
         db.close();
         return favoriteNovels;
     }
+
 
     // Método para actualizar una novela
     public void updateNovel(Novel novel) {
@@ -147,15 +149,16 @@ public class SQLiteHelper extends SQLiteOpenHelper {
         db.close();
     }
 
-    // Método para actualizar el estado de favorito de una novela
     public void updateFavoriteStatus(String novelId, boolean isFavorite) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
-        values.put(COLUMN_FAVORITE, isFavorite ? 1 : 0);
+        values.put(COLUMN_FAVORITE, isFavorite ? 1 : 0); // 1 para true, 0 para false
 
-        db.update(TABLE_NOVELS, values, COLUMN_ID + "=?", new String[]{novelId});
+        db.update(TABLE_NOVELS, values, COLUMN_ID + " = ?", new String[]{novelId});
         db.close();
     }
+
+
 
     // Método para agregar una reseña
     public void addReview(Review review) {
@@ -196,3 +199,5 @@ public class SQLiteHelper extends SQLiteOpenHelper {
         return reviewList;
     }
 }
+
+
